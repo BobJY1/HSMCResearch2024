@@ -1,1 +1,1 @@
-# HSMC-Research-2024
+# HSMCResearch2024
