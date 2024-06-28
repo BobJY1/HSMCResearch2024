@@ -2,7 +2,7 @@
 import java.util.ArrayList;
 
 public class BaseGen {
-
+    //Add connectedness
     public static void print(ArrayList<ArrayList<Integer>> graph){
         for (int i=0;i<graph.size();i++){
             System.out.println(i+": "+graph.get(i));
