@@ -5,6 +5,9 @@ import random
 from sporadics import m1
 import sat_colorability_solver
 from graph import Graph
+import sysconfig
+
+print(sysconfig.get_paths()["purelib"])
 
 
 def check_triangle_free(g):
@@ -643,7 +646,7 @@ def main():
   #      break
   #  if iso == False:
   #    print(m, ",")
-  looped_superminimal_finder()
+  #looped_superminimal_finder()
   
 
 if __name__ == '__main__':
