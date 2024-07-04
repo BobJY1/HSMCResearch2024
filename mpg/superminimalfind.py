@@ -240,11 +240,11 @@ def generateNgraph(n):
     g.add_edge(edge[0], edge[1])
   return g
 
-'''
-  2   6   10    14
-  1 3 5 7  9 11 
-0   4   8    12
-'''
+#'''
+#  2   6   10    14
+#  1 3 5 7  9 11 
+#0   4   8    12
+#'''
 #generate W graph as defined by me, proven to be superminimal, unique coloring
 def generateWgraph(n): #n is multiple of 2
   if (n % 2 != 0): raise Exception()
@@ -619,17 +619,42 @@ def looped_superminimal_finder():
       
   #print(pickle.dumps(random.getstate()))
 
+#generate all mpgs of v vertices
+def generateVMPG (v):
+  #work in progress
+  print ("Not done yet")
+
+def parseMPG (file):
+  f = open("mpg/"+file, "r")
+  row = f.readlines()
+  mpgs = []
+  for line in row:
+    adjMatrix =[]
+    adjRow = line.split()
+    for i in range (1,len(adjRow)):
+      
+      adjMatrix+=list(map(int, adjRow[i]))
+    mpgs +=[construct_from_adj(adjMatrix)]
+
+  return mpgs
+
+  
+
+
+
+
+
 def main():
-  amnt = {}
-  count= 0
-  for m in m1:
-    m = construct_from_edge_list(m).adjMatrix
-    #printm(m)
-    #print()
-    amnt[len(m)] = amnt.get(len(m), 0)+1
-    count += 1
-  print(dict(sorted(amnt.items())))
-  print(count)
+  # amnt = {}
+  # count= 0
+  # for m in m1:
+  #   m = construct_from_edge_list(m).adjMatrix
+  #   #printm(m)
+  #   #print()
+  #   amnt[len(m)] = amnt.get(len(m), 0)+1
+  #   count += 1
+  # print(dict(sorted(amnt.items())))
+  # print(count)
   #for m in m1:
   #  if len(m) == 10:
   #    print(m)
@@ -647,6 +672,23 @@ def main():
   #  if iso == False:
   #    print(m, ",")
   #looped_superminimal_finder()
+  #print(m1[0])
+  
+  #printm(g.adjMatrix)
+  
+
+  
+  # up to number of vertices
+  for g in parseMPG("fiveV"):
+    printm(g.adjMatrix)
+  
+
+
+
+
+
+
+
   
 
 if __name__ == '__main__':

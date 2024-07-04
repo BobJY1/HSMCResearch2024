@@ -8,4 +8,4 @@ n = 1
 for (u, v) in edge_list:
     n = max(n, u, v)
 
-print(allSolutions(n + 1, edge_list))
+#print(allSolutions(n + 1, edge_list))
