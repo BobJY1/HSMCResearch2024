@@ -6,8 +6,12 @@ from sporadics import m1
 import sat_colorability_solver
 from graph import Graph
 import sysconfig
+import daft
+import itertools
+import os
+import math
 
-print(sysconfig.get_paths()["purelib"])
+#print(sysconfig.get_paths()["purelib"])
 
 
 def check_triangle_free(g):
@@ -204,7 +208,7 @@ def is_complement_connected(g):
         g1.add_edge(i, j)
   return nx.is_connected(g1)
 
-#generate cycle
+#generate
 def generateCycle(n):
   g = Graph(n)
   g.add_edge(0, n - 1)
@@ -405,8 +409,6 @@ def find5cycle_strong(g):
             if (y in [u, v, w, x]):
               continue
             if (g.adjMatrix[x][y] == 1 and g.adjMatrix[y][u] == 1):
-              if (u == 0 and v == 17):
-                print(u, v, w, x, y)
               cycle = True
       if (not cycle):
         print(u, v, "not part of a cycle!!!!")
@@ -419,6 +421,7 @@ def find_induced_n_cycle(g, n):
   g1.add_edges_from(g.edge_list())
   h1 = nx.cycle_graph(n)
   gm = nx.isomorphism.GraphMatcher(g1, h1)
+  #return gm.subgraph_is_isomorphic()
   print(gm.subgraph_is_isomorphic())
   return gm.subgraph_isomorphisms_iter()
 
@@ -619,32 +622,359 @@ def looped_superminimal_finder():
       
   #print(pickle.dumps(random.getstate()))
 
-#generate all mpgs of v vertices
-def generateVMPG (v):
-  #work in progress
-  print ("Not done yet")
 
-def parseMPG (file):
-  f = open("mpg/"+file, "r")
-  row = f.readlines()
+#parses mpgs complements from list of graph6 
+def parse_MPG_complement_graph6 (file, v):
+  graphs = nx.read_graph6(file)
   mpgs = []
-  for line in row:
+  countDone=0
+  for g in graphs:
     adjMatrix =[]
-    adjRow = line.split()
-    for i in range (1,len(adjRow)):
-      
-      adjMatrix+=list(map(int, adjRow[i]))
-    mpgs +=[construct_from_adj(adjMatrix)]
+    #print(countDone)
+    for i in range (v):
+      current =[]
+      for j in range (v):
+        if g.has_edge(i,j):
+          current.append(1)
+        else:
+          current.append(0)
+      adjMatrix.append(current)
+
+    current = construct_from_adj(adjMatrix)
+    e = check_mpg_complement(current, True, True) #use check_mpg_complement_inner to optimize
+    countDone=countDone+1;
+    if (countDone%1000==0):
+      print("Done: ", countDone, " done - ", math.trunc(math.ceil(1000*countDone/len(graphs)))/10, "%")
+    if  (e):
+      mpgs.append(current)
+
 
   return mpgs
 
   
+  
+
+#parses mpg complements from file of adjacency matrices
+def parse_MPG_complement (file):
+  f = open(file, "r")
+  row = f.readlines()
+  graphs = []
+  
+  countAdd = 0
+  for line in row:
+    adjMatrix =[]
+    adjRow = line.split()
+    countAdd=countAdd+1
+    if (countAdd%1000==0):
+      print("Add: ", countAdd, " done - ", math.trunc(math.ceil(100*countAdd/len(row))), "%")
+
+    
+    for i in range (1,len(adjRow)):
+      
+      adjMatrix.append(list(map(int, adjRow[i])))
+      
+    graphs +=[construct_from_adj(adjMatrix)]
+  
+  countDone = 0
+  #graphs[0].print_matrix()
+  mpgs2=[]
+  for g in graphs:
+    e = check_mpg_complement(g, True, True) #use check_mpg_complement_inner to optimize
+    countDone=countDone+1;
+    if (countDone%1000==0):
+      print("Done: ", countDone, " done - ", math.trunc(math.ceil(100*countDone/len(row))), "%")
+    if  (e):
+      mpgs2.append(g)
+
+  return mpgs2
+
+#satisfies all conditions except for 3-colorable, used to check 5-cycle conjecture
+def parse_graph_complement (file):
+  f = open(file, "r")
+  row = f.readlines()
+  mpgs = []
+  countAdd = 0
+  for line in row:
+    adjMatrix =[]
+    adjRow = line.split()
+    countAdd=countAdd+1
+    if (countAdd%1000==0):
+      print("Add: ", countAdd, " done - ", math.trunc(math.ceil(100*countAdd/len(row))), "%")
+
+    
+    for i in range (1,len(adjRow)):
+      
+      adjMatrix.append(list(map(int, adjRow[i])))
+      
+    mpgs +=[construct_from_adj(adjMatrix)]
+  
+  countDone = 0
+  mpgs2=[]
+  for g in mpgs:
+    if (is_complement_connected(g)):
+      if (check_can_add_graph(g)==(-1,-1)):
+        mpgs2.append(g)
+
+    countDone=countDone+1;
+    if (countDone%1000==0):
+      print("Done: ", countDone, " done - ", math.trunc(math.ceil(100*countDone/len(row))), "%")
+    
+
+  return mpgs2
+
+#satisfies all conditions except for 3-colorable, used to check 5-cycle conjecture
+def parse_graph_complement_graph6 (file, v):
+  graphs = nx.read_graph6(file)
+  graph = []
+  countDone=0
+  for g in graphs:
+    adjMatrix =[]
+    #print(countDone)
+    for i in range (v):
+      current =[]
+      for j in range (v):
+        if g.has_edge(i,j):
+          current.append(1)
+        else:
+          current.append(0)
+      adjMatrix.append(current)
+
+    
+    countDone=countDone+1;
+    if (countDone%1000==0):
+      print("Done: ", countDone, " done - ", math.trunc(math.ceil(1000*countDone/len(graphs)))/10, "%")
+    gr = construct_from_adj(adjMatrix)
+    if (is_complement_connected(gr)):
+      if (check_can_add_graph(gr)==(-1,-1)):
+        graph.append(gr)
+  return graph  
+ 
+
+#find if edge can be added given graph and coloring. returns edge if possible, otherwise (-1, -1)
+def check_can_add_graph(g, fast=True, silent=True, permutation=None):
+  if permutation == None:
+    permutation = range(g.size)
+  can_add = (-1, -1)
+  for k in range(len(permutation)):
+    u = permutation[k]
+    for l in range(k+1,len(permutation)):
+      v = permutation[l]
+      if (g.adjMatrix[u][v] == 0):
+        g.adjMatrix[u][v] = 1
+        if check_triangle_free(g):
+          if not silent:
+            print("Added edge between nodes", str(u), "and", str(v))
+          can_add = (u, v)
+          if (fast): return can_add
+        g.adjMatrix[u][v] = 0
+  return can_add
+
+def checkG8():
+  
+  for i in range (5, 14):
+    mpgs = parse_MPG_complement(r"HSMCResearch2024/mpg/Graphs/MPG"+str(i)+"Vertices")
+    countFound=0
+    countGraphsHaveG8=0
+    for g in mpgs:
+      found=False
+      for (u, v) in g.edge_list():
+        
+        for w in range(g.size):
+          if (g.adjMatrix[v][w] != 1 or w in  [u,v]):
+            continue
+          for x in range(g.size):
+            
+            if (g.adjMatrix[u][x]!=1 or g.adjMatrix[w][x] != 1 or x in [u, v,w]):
+              continue
+            for y in range(g.size):
+              if (y in [u, v, w, x]):
+                continue
+              if (g.adjMatrix[x][y] == 1 and g.adjMatrix[v][y]==1):
+                found=True
+                countFound=countFound+1
+      if (found):
+        countGraphsHaveG8=countGraphsHaveG8+1
 
 
+    print("There are ", str(countGraphsHaveG8), " MPGs with ", str(i), "vertices that have G8 subgraphs with ", str(countFound), "total possibly isomorphic G8s." )
+        
+def check_4_cycle(file):
+  for i in range (5,14):
+    mpgs = parse_MPG_complement(file+str(i)+"Vertices")
+    countFound = 0
+    countFailed=0
+    totalFound=0
+    for g in mpgs:
+      found = False
+      for (u, v) in g.edge_list():
+        
+        for w in range(g.size):
+          if (g.adjMatrix[v][w] != 1 or w in [u,v]):
+            continue
+          for x in range(g.size):
+            if (x in [u,v,w]):
+              continue
+            if (g.adjMatrix[w][x] == 1 and g.adjMatrix[x][u]==1):
+              found = True
+              totalFound=totalFound+1
+      if (found):
+        countFound=countFound+1
+      else:
+        countFailed=countFailed+1
+        if (i==10 and check_mpg_complement(g, True, True)):
+          print(g.edge_list())
 
+    print(str(i), " Vertices: ", countFound, " found with ", totalFound, "(possibly isomorphic) cycles and ", countFailed, " graphs without a 4-cycle.")
+
+
+#check 6 cycle conjecture - at least one vertex connects 2 opposite edges
+def check_6_cycle_conjecture(g,c, u,v,w,x,y,z):
+  #print("here")
+  ux = False
+  vy = False
+  wz = False
+  for i in range(g.size):
+    if (i in [u,v,w,x,y,z]):
+      continue
+
+    if (g.adjMatrix[i][u]==1 and g.adjMatrix[i][x]==1):
+      ux = True
+
+    if (g.adjMatrix[i][v]==1 and g.adjMatrix[i][y]==1):
+      vy = True
+
+    if (g.adjMatrix[i][w]==1 and g.adjMatrix[i][z]==1):
+      wz = True
+
+    if (ux or vy or wz):
+      return True
+    
+  return False
+
+
+#check 6 cycle with coloring
+def check_6_cycle(g,c ):
+  
+  count_6_cycle_conjecture_works=0
+  for (u, v) in g.edge_list():
+      cycle = False
+      for w in range(g.size):
+        if (g.adjMatrix[v][w] != 1 or w in [u,v]):
+          continue
+        for x in range(g.size):
+          if (g.adjMatrix[w][x] != 1 or x in [u, v,w]):
+            continue
+          for y in range(g.size):
+            if (g.adjMatrix[x][y] != 1 or y in [u, v, w, x]):
+              continue
+            for z in range (g.size):
+              if (z in [u,v,w,x,y]):
+                continue
+              if (g.adjMatrix[y][z]==1 and g.adjMatrix[z][u]==1):
+                cycle = True
+                if (c[u]==c[x] and c[v]==c[y] and c[w]==c[z]):
+                  # print("here2")
+                  if (not check_6_cycle_conjecture(g,c,u,v,w,x,y,z)):
+                    if (check_mpg_complement(g,True,True)):
+                      print(g.edge_list())
+                      print(u,v,w,x,y,z)
+                      print(c)
+                      print ("Conjecture is false")
+                      print(" ")
+                    
+                    
+
+                  # else:
+                  #   print("Conjecture true")
+                  #   count_6_cycle_conjecture_works=count_6_cycle_conjecture_works+1
+
+                  # print(g.edge_list())
+                  # print(u,v,w,x,y,z)
+                  # print(c)
+                  # print(" ")
+  #return count_6_cycle_conjecture_works
+
+
+#used to check if 6 cycle alternating coloring exists
+def check_mpg_complement_inner_6_cycle(g, fast=False, silent=False):
+  if not silent:
+    print("Valid coloring list:")
+  colorings = sat_colorability_solver.allSolutions(g.size, g.edge_list())
+  if colorings == []:
+    return None # this means no coloring found
+
+  edge_add = []
+  for coloring in colorings:
+    if (not silent): print(coloring)
+    while (edge := check_can_add(g, coloring, fast=True, silent=silent)) != (-1, -1):
+      edge_add += [edge]
+      if fast: 
+        return edge_add
+      
+    if is_complement_connected(g):
+      if check_triangle_free(g):
+        
+        check_6_cycle(g,coloring)
+ 
+  return edge_add
+
+#used to check if 6 cycle alternating coloring exists
+def check_mpg_complement_6_cycle(g, fast=False, silent=False):
+  t1 = time.time()
+  if not is_complement_connected(g):
+    if not silent:
+      print("MPG is not connected.")
+    return False
+  if check_triangle_free(g):
+    minimal = check_mpg_complement_inner_6_cycle(g, fast=fast, silent=silent)
+    
+
+    t2 = time.time()
+    if not silent:
+      print("Time taken:", str(t2 - t1), "seconds")
+    if (minimal == None):
+      if not silent:
+        print("Graph is not colorable")
+      return False
+    if (minimal == []):
+      if not silent:
+        print("Graph is minimal")
+      return True
+    else:
+      if not silent:
+        print("Not minimal")
+      return False
+  if not silent:
+    print("Not triangle free")
+  t2 = time.time()
+  if not silent:
+    print("Time taken:", str(t2 - t1), "seconds")
+  return False
+
+# #used to check if 6 cycle alternating coloring exists
+# def check_can_add(g, c, fast=False, silent=False, permutation=None):
+#   if permutation == None:
+#     permutation = range(g.size)
+#   can_add = (-1, -1)
+#   for k in range(len(permutation)):
+#     u = permutation[k]
+#     for l in range(k+1,len(permutation)):
+#       v = permutation[l]
+#       if (c[u] != c[v]) and (g.adjMatrix[u][v] == 0):
+#         g.adjMatrix[u][v] = 1
+#         if check_triangle_free(g):
+#           if not silent:
+#             print("Added edge between nodes", str(u), "and", str(v))
+#           can_add = (u, v)
+#           if (fast): return can_add
+#         g.adjMatrix[u][v] = 0
+#   return can_add
 
 
 def main():
+  #print(os.path.abspath("mpg/fiveV"))
+  #print(os.listdir())
+  #print("test")
   # amnt = {}
   # count= 0
   # for m in m1:
@@ -678,17 +1008,124 @@ def main():
   
 
   
-  # up to number of vertices
-  for g in parseMPG("fiveV"):
-    printm(g.adjMatrix)
+  #up to number of vertices
+  #print (parseMPG("fiveV")[0].adjMatrix)
+  #vertices = 10
+  #file = str(vertices)+"V"
+  #mpg = parse_MPG_complement(file)
+  # #graph = parse_graph_complement(file)
+  #print("MPG: ", len(mpg))
+  #print("Graph: ", len(graph))
+
+  # file_graph6 = str(vertices)+"Vertices"
+  # mpgs = parse_MPG_complement_graph6(r"HSMCResearch2024/mpg/nauty2_8_8/TF_C_D2/"+ file_graph6,vertices)
+  # print ("MPG from Nauty: ", len(mpgs))
+
+  # for i in range(5,14):
+  #   mpgs = parse_MPG_complement(r"HSMCResearch2024/mpg/Graphs/MPG"+str(i)+"Vertices")
+  #   graphs = parse_graph_complement(r"HSMCResearch2024/mpg/Graphs/Graphs"+str(i)+"Vertices")
+  #   for g in mpgs:
+  #     check_mpg_complement_6_cycle(g,False,True)
+    # uniqueMPG = 0
+    # uniqueGraph =0
+    # shared =0
+    # shared2=0
+
+    # for g in mpgs:
+    #   same = False
+    #   for h in graphs:
+    #     if (compgraph(g,h)):
+    #       same=True;
+    #       break
+    #   if (not same):
+    #     uniqueMPG = uniqueMPG+1
+    #   else:
+    #     shared=shared+1
+    
+    # for g in graphs:
+    #   same = False
+    #   for h in mpgs:
+    #     if (compgraph(g,h)):
+    #       same=True;
+    #       break
+    #   if (not same):
+    #     uniqueGraph = uniqueGraph+1
+    #   else:
+    #     shared2=shared2+1
+    # print(i,"Vertices: , Total MPGs: ",len(mpgs),", Total Graphs: ",len(graphs))
+    # print("Unique MPGs: ", uniqueMPG, ", Unique Graphs: ", uniqueGraph,", Shared: ",shared ,"=",shared2)
+  
+ 
+  fiveVertices = nx.read_graph6(r"HSMCResearch2024/mpg/nauty2_8_8/all5Vertices")
+  graph = []
+  
+  for g in fiveVertices:
+    adjMatrix =[]
+    #print(countDone)
+    for i in range (5):
+      current =[]
+      for j in range (5):
+        if g.has_edge(i,j):
+          current.append(1)
+        else:
+          current.append(0)
+      adjMatrix.append(current)
+    gr = construct_from_adj(adjMatrix)
+    print(gr.edge_list())
+    
+
+
+  #   for g1 in graphs:
+  #     adj = g1.adjMatrix
+  #     line = str(count)+":"
+  #     for j in range (i):
+  #       line+=" "+''.join(str(x) for x in adj[j])
+  #     text.append(line+'\n')
+  #     count=count+1
+    
+  #   file = open(r"Graphs"+str(i)+"Vertices", "w")
+  #   file.writelines(text)
+  #   file.close()
+
+
+
+  
+  # vertices = 13
+  # file = r"HSMCResearch2024/mpg/Graphs/MPG" +str(vertices)+"Vertices"
+
+  # allCycle = True
+  # mpg = parse_MPG_complement(file)
+  # for g in mpg:
+  #   if find5cycle_strong(g):
+  #     print("MPGs not all 5 cycle")
+  #     allCycle =False
+  #     break
+    
+  #   #print (g.edge_list())
+  # if allCycle:
+  #   print ("MPGs all 5 cycle")
+  #   print(len(mpg))
+
+  # graph = parse_graph_complement_graph6(file_graph6, vertices)
+  # allCycleGraph = True
+  # for g in graph:
+  #   #print(g.edge_list())
+  #   if find5cycle_strong(g):
+  #     print("Graphs not all 5 cycle")
+  #     allCycleGraph =False
+  #     break
+    
+  #   #print (g.edge_list())
+  # if allCycleGraph:
+  #   print ("Graphs all 5 cycle")
+  #   print(len(graph))
+
+  #check_4_cycle(r"HSMCResearch2024/mpg/Graphs/MPG")
+  #check_4_cycle(r"HSMCResearch2024/mpg/Graphs/Graphs")
+
   
 
-
-
-
-
-
-
+  
   
 
 if __name__ == '__main__':
