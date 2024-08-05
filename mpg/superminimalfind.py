@@ -622,8 +622,57 @@ def looped_superminimal_finder():
       
   #print(pickle.dumps(random.getstate()))
 
+#parses and finds mpgs complements from file of graph6
+#v is number of vertices
+#continuously writes to output file in case code takes too long
+def parse_MPG_complement_graph6_partial (inputFile, outputFile, v):
+  input= open(inputFile, "r")
+  output = open(outputFile, "w")
+  count=1
+  currentGraph6 = input.readline().rstrip('\n')
+  #print(currentGraph6)
+  mpgs = []
+  countDone=0
+  while(len(currentGraph6)>0):
+    #print(currentGraph6)
+    g = nx.from_graph6_bytes(bytes(currentGraph6, encoding="ascii"))
 
-#parses mpgs complements from list of graph6 
+    adjMatrix =[]
+    #print(countDone)
+    for i in range (v):
+      current =[]
+      for j in range (v):
+        if g.has_edge(i,j):
+          current.append(1)
+        else:
+          current.append(0)
+      adjMatrix.append(current)
+
+    current2 = construct_from_adj(adjMatrix)
+    e = check_mpg_complement(current2, True, True) 
+    countDone=countDone+1;
+    if (countDone%10000==0):
+      print("Done: ", countDone)
+    if  (e):
+      mpgs.append(current2)
+      
+      adj = current2.adjMatrix
+      line = str(count)+":"
+      for j in range (len(adj)):
+        line+=" "+''.join(str(x) for x in adj[j])    
+      count=count+1
+      output.write(line+'\n')
+      output.flush()
+    
+  
+    currentGraph6 = input.readline().rstrip('\n')
+
+  input.close()
+  output.close()
+  return mpgs
+
+
+#parses mpgs complements from file of graph6 
 def parse_MPG_complement_graph6 (file, v):
   graphs = nx.read_graph6(file)
   mpgs = []
@@ -651,7 +700,6 @@ def parse_MPG_complement_graph6 (file, v):
 
   return mpgs
 
-  
   
 
 #parses mpg complements from file of adjacency matrices
@@ -686,9 +734,13 @@ def parse_MPG_complement (file):
     if  (e):
       mpgs2.append(g)
 
+  f.close()
+
   return mpgs2
 
-#satisfies all conditions except for 3-colorable, used to check 5-cycle conjecture
+
+#satisfies all conditions except for 3-colorable (checks for pseudoMPGs), used to check 5-cycle conjecture
+#file in adj matrix
 def parse_graph_complement (file):
   f = open(file, "r")
   row = f.readlines()
@@ -719,10 +771,11 @@ def parse_graph_complement (file):
     if (countDone%1000==0):
       print("Done: ", countDone, " done - ", math.trunc(math.ceil(100*countDone/len(row))), "%")
     
-
+  f.close()
   return mpgs2
 
-#satisfies all conditions except for 3-colorable, used to check 5-cycle conjecture
+#satisfies all conditions except for 3-colorable , used to check 5-cycle conjecture
+#checks for pseuoMPGs with file in graph6 format
 def parse_graph_complement_graph6 (file, v):
   graphs = nx.read_graph6(file)
   graph = []
@@ -769,6 +822,7 @@ def check_can_add_graph(g, fast=True, silent=True, permutation=None):
         g.adjMatrix[u][v] = 0
   return can_add
 
+#checks for specific type of subgraph, idk why its important
 def checkG8():
   
   for i in range (5, 14):
@@ -797,7 +851,8 @@ def checkG8():
 
 
     print("There are ", str(countGraphsHaveG8), " MPGs with ", str(i), "vertices that have G8 subgraphs with ", str(countFound), "total possibly isomorphic G8s." )
-        
+
+#checks for 4 cycles in mpg complements, used to disprove 4 cycle conjecture        
 def check_4_cycle(file):
   for i in range (5,14):
     mpgs = parse_MPG_complement(file+str(i)+"Vertices")
@@ -951,24 +1006,23 @@ def check_mpg_complement_6_cycle(g, fast=False, silent=False):
     print("Time taken:", str(t2 - t1), "seconds")
   return False
 
-# #used to check if 6 cycle alternating coloring exists
-# def check_can_add(g, c, fast=False, silent=False, permutation=None):
-#   if permutation == None:
-#     permutation = range(g.size)
-#   can_add = (-1, -1)
-#   for k in range(len(permutation)):
-#     u = permutation[k]
-#     for l in range(k+1,len(permutation)):
-#       v = permutation[l]
-#       if (c[u] != c[v]) and (g.adjMatrix[u][v] == 0):
-#         g.adjMatrix[u][v] = 1
-#         if check_triangle_free(g):
-#           if not silent:
-#             print("Added edge between nodes", str(u), "and", str(v))
-#           can_add = (u, v)
-#           if (fast): return can_add
-#         g.adjMatrix[u][v] = 0
-#   return can_add
+#used to output all mpgs in a list to output file of choice
+#outputed in adj matrix using input format
+def output_MPG(mpg, file):
+  text=[]
+  count=1
+  for g1 in mpg:
+    adj = g1.adjMatrix
+    line = str(count)+":"
+    for j in range (len(adj)):
+      line+=" "+''.join(str(x) for x in adj[j])
+    text.append(line+'\n')
+    count=count+1
+    
+  file = open(file, "w")
+  file.writelines(text)
+  file.close()
+
 
 
 def main():
@@ -1056,22 +1110,22 @@ def main():
     # print("Unique MPGs: ", uniqueMPG, ", Unique Graphs: ", uniqueGraph,", Shared: ",shared ,"=",shared2)
   
  
-  fiveVertices = nx.read_graph6(r"HSMCResearch2024/mpg/nauty2_8_8/all5Vertices")
-  graph = []
+  # fiveVertices = nx.read_graph6(r"HSMCResearch2024/mpg/nauty2_8_8/all5Vertices")
+  # graph = []
   
-  for g in fiveVertices:
-    adjMatrix =[]
-    #print(countDone)
-    for i in range (5):
-      current =[]
-      for j in range (5):
-        if g.has_edge(i,j):
-          current.append(1)
-        else:
-          current.append(0)
-      adjMatrix.append(current)
-    gr = construct_from_adj(adjMatrix)
-    print(gr.edge_list())
+  # for g in fiveVertices:
+  #   adjMatrix =[]
+  #   #print(countDone)
+  #   for i in range (5):
+  #     current =[]
+  #     for j in range (5):
+  #       if g.has_edge(i,j):
+  #         current.append(1)
+  #       else:
+  #         current.append(0)
+  #     adjMatrix.append(current)
+  #   gr = construct_from_adj(adjMatrix)
+  #   print(gr.edge_list())
     
 
 
@@ -1089,6 +1143,10 @@ def main():
 
 
 
+  mpg = parse_MPG_complement_graph6_partial(r"/Users/yy2442/HSMCResearch2024/Data/SearchSpace/Graph6/14Vertices",r"/Users/yy2442/HSMCResearch2024/Data/MPG14V", 14)
+  #print(mpg[0].adjMatrix)
+  #print(len(mpg))
+  #output_MPG(mpg, r"/Users/yy2442/HSMCResearch2024/Data/MPG14Vertices")
   
   # vertices = 13
   # file = r"HSMCResearch2024/mpg/Graphs/MPG" +str(vertices)+"Vertices"
