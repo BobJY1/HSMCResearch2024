@@ -622,6 +622,75 @@ def looped_superminimal_finder():
       
   #print(pickle.dumps(random.getstate()))
 
+
+#parses and finds mpgs complements from file of graph6 starts from specific number in case code is interupted
+#v is number of vertices
+#continuously writes to output file in case code takes too long
+def parse_MPG_complement_graph6_partial (inputFile, outputFile, v, start, startIndex):
+  input= open(inputFile, "r")
+  #append or write?
+  output = open(outputFile, "a")
+  count=1
+  currentGraph6 = input.readline().rstrip('\n')
+  #add current mpgs
+  mpgs = []
+  countDone=0
+  while(len(currentGraph6)>0):
+    #print(currentGraph6)
+    if (countDone<start):
+      currentGraph6 = input.readline().rstrip('\n')
+      continue
+    g = nx.from_graph6_bytes(bytes(currentGraph6, encoding="ascii"))
+
+    adjMatrix =[]
+    #print(countDone)
+    for i in range (v):
+      current =[]
+      for j in range (v):
+        if g.has_edge(i,j):
+          current.append(1)
+        else:
+          current.append(0)
+      adjMatrix.append(current)
+
+    current2 = construct_from_adj(adjMatrix)
+    e = check_mpg_complement(current2, True, True) 
+    countDone=countDone+1;
+    if (countDone%10000==0):
+      print("Done: ", countDone)
+    if  (e):
+      add=True
+      if (countDone<=start+10000):
+        
+        for g in mpgs:
+          if g==current2:
+            add=False
+            break
+      
+      if(not add):
+        currentGraph6 = input.readline().rstrip('\n')
+        continue
+      mpgs.append(current2)
+      
+      adj = current2.adjMatrix
+      line = str(count)+":"
+      for j in range (len(adj)):
+        line+=" "+''.join(str(x) for x in adj[j])    
+      count=count+1
+      output.write(line+'\n')
+      output.flush()
+    
+  
+    currentGraph6 = input.readline().rstrip('\n')
+
+
+
+  input.close()
+  output.close()
+  return mpgs
+
+
+
 #parses and finds mpgs complements from file of graph6
 #v is number of vertices
 #continuously writes to output file in case code takes too long
